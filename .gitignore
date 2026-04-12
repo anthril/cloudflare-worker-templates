@@ -1,0 +1,8 @@
+node_modules/
+.wrangler/
+worker-configuration.d.ts
+.dev.vars
+*.log
+dist/
+.DS_Store
+Thumbs.db

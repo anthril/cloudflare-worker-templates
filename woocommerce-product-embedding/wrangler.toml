@@ -1,0 +1,45 @@
+name = "woocommerce-product-sync"
+main = "src/index.ts"
+compatibility_date = "2025-01-06"
+compatibility_flags = ["nodejs_compat"]
+
+# Set your Cloudflare account ID (or use CLOUDFLARE_ACCOUNT_ID env var)
+# account_id = "your-account-id"
+
+workers_dev = true
+
+# Vectorize index for product embeddings
+# Create with: npx wrangler vectorize create products --dimensions=1536 --metric=cosine
+[[vectorize]]
+binding = "PRODUCTS_INDEX"
+index_name = "products"
+
+# KV namespace for full product data
+# Create with: npx wrangler kv namespace create PRODUCT_DATA
+[[kv_namespaces]]
+binding = "PRODUCT_DATA"
+id = "your-kv-namespace-id"
+
+# Weekly product sync schedule (adjust to your timezone)
+# Default: Saturday 18:00 UTC (Sunday 4am AEST)
+[triggers]
+crons = ["0 18 * * 6"]
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[vars]
+ENVIRONMENT = "production"
+WOOCOMMERCE_URL = "https://your-store.com"
+
+# Secrets (set via: npx wrangler secret put SECRET_NAME):
+# OPENAI_API_KEY        - OpenAI API key for embedding generation
+# WOOCOMMERCE_KEY       - WooCommerce REST API consumer key
+# WOOCOMMERCE_SECRET    - WooCommerce REST API consumer secret

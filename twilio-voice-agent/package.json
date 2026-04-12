@@ -1,0 +1,21 @@
+{
+  "name": "twilio-voice-agent",
+  "version": "1.0.0",
+  "description": "AI Voice Agent - Twilio Media Streams + OpenAI Realtime API on Cloudflare Workers",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "node --no-deprecation node_modules/wrangler/bin/wrangler.js dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "types": "wrangler types"
+  },
+  "keywords": ["cloudflare", "workers", "twilio", "openai", "voice-agent", "realtime", "hubspot"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.0.0"
+  },
+  "dependencies": {}
+}

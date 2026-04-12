@@ -1,0 +1,21 @@
+{
+  "name": "woocommerce-product-embedding",
+  "version": "1.0.0",
+  "description": "Sync WooCommerce products to Cloudflare Vectorize for semantic search",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "types": "wrangler types"
+  },
+  "keywords": ["cloudflare", "workers", "vectorize", "woocommerce", "embeddings", "semantic-search"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.0.0"
+  },
+  "dependencies": {}
+}
