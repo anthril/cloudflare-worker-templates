@@ -58,17 +58,24 @@ export default {
     }
 
     // POST /sync-products — manual full sync trigger (auth required)
+    // Runs inline (not waitUntil) because large catalogs exceed the waitUntil time limit.
+    // The caller waits for the response, which includes the full sync result.
     if (url.pathname === '/sync-products' && request.method === 'POST') {
       const authError = checkAuth(request, env);
       if (authError) return authError;
 
       console.log('[Manual] Product sync triggered');
-      ctx.waitUntil(
-        syncAllProducts(env)
-          .then(result => console.log('[Manual] Product sync result:', JSON.stringify(result)))
-          .catch(err => console.error('[Manual] Product sync failed:', err))
-      );
-      return Response.json({ status: 'sync_started', message: 'Full product sync is running in the background' });
+      try {
+        const result = await syncAllProducts(env);
+        console.log('[Manual] Product sync result:', JSON.stringify(result));
+        return Response.json({ status: 'sync_complete', result });
+      } catch (err) {
+        console.error('[Manual] Product sync failed:', err);
+        return Response.json(
+          { status: 'sync_failed', error: err instanceof Error ? err.message : 'Unknown error' },
+          { status: 500 }
+        );
+      }
     }
 
     // POST /validate — test all credentials (auth required)
@@ -82,8 +89,14 @@ export default {
     }
 
     // POST /webhook/woocommerce — WooCommerce webhook receiver
+    // POST /webhook/woocommerce — WooCommerce webhook receiver
     if (url.pathname === '/webhook/woocommerce' && request.method === 'POST') {
       return handleWebhook(request, env);
+    }
+
+    // GET/HEAD /webhook/woocommerce — WooCommerce may probe the URL before saving
+    if (url.pathname === '/webhook/woocommerce' && (request.method === 'GET' || request.method === 'HEAD')) {
+      return Response.json({ status: 'ok', endpoint: 'woocommerce-webhook' });
     }
 
     return new Response('Not found', { status: 404 });
@@ -158,6 +171,19 @@ function checkAuth(request: Request, env: Env): Response | null {
  * Returns 200 immediately — WooCommerce disables webhooks that respond slowly or with non-2xx.
  */
 async function handleWebhook(request: Request, env: Env): Promise<Response> {
+  // Check topic FIRST — WooCommerce sends a verification ping when creating a webhook.
+  // The ping may not include a valid signature or may use topic "action.woocommerce_deliver_webhook_async".
+  // We must return 200 for pings or WooCommerce will refuse to save the webhook.
+  const topic = request.headers.get('x-wc-webhook-topic') || '';
+  const resource = request.headers.get('x-wc-webhook-resource') || '';
+  const event = request.headers.get('x-wc-webhook-event') || '';
+
+  // Handle verification pings and non-product webhooks (return 200 immediately)
+  if (!topic || resource !== 'product') {
+    console.log(`[Webhook] Ping/non-product webhook: topic=${topic}, resource=${resource} — returning 200`);
+    return Response.json({ status: 'ok', reason: 'ping accepted' });
+  }
+
   if (!env.WOOCOMMERCE_WEBHOOK_SECRET) {
     console.error('[Webhook] WOOCOMMERCE_WEBHOOK_SECRET not configured');
     return Response.json(
@@ -181,11 +207,6 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
     console.warn('[Webhook] Invalid webhook signature');
     return Response.json({ error: 'Invalid signature' }, { status: 401 });
   }
-
-  // Parse topic — ignore non-product webhooks (handles WooCommerce verification pings)
-  const topic = request.headers.get('x-wc-webhook-topic') || '';
-  const resource = request.headers.get('x-wc-webhook-resource') || '';
-  const event = request.headers.get('x-wc-webhook-event') || '';
 
   if (!topic || resource !== 'product') {
     console.log(`[Webhook] Ignoring non-product webhook: topic=${topic}, resource=${resource}`);
