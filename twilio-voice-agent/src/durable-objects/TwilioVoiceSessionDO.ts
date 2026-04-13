@@ -21,14 +21,6 @@ interface Env {
   KB_INDEX: Vectorize;
   PRODUCT_DATA: KVNamespace;
   OPENAI_API_KEY: string;
-  WOOCOMMERCE_KEY: string;
-  WOOCOMMERCE_SECRET: string;
-  HUBSPOT_API_KEY: string;
-  HUBSPOT_PIPELINE_ID?: string;
-  HUBSPOT_DEAL_STAGE_ID?: string;
-  HUBSPOT_OWNER_ID?: string;
-  SHIPPING_API_URL?: string;
-  SHIPPING_API_KEY?: string;
   TIMEZONE?: string;
   LOCALE?: string;
   MAX_CALL_DURATION_MINUTES?: string;
@@ -209,9 +201,6 @@ export class TwilioVoiceSessionDO extends DurableObject<Env> {
       phoneNumber: this.callerNumber || 'unknown',
       startTime: Date.now(),
       customerData: {},
-      lineItems: [],
-      freightCalculationFailed: false,
-      dealCreationAttempted: false,
       lastAgentResponses: [],
       totalTurns: 0,
       lastToolCalled: null,
@@ -553,8 +542,6 @@ export class TwilioVoiceSessionDO extends DurableObject<Env> {
   private static readonly SLOW_TOOLS = new Set([
     'search_products',
     'search_knowledge_base',
-    'create_hubspot_deal',
-    'calculate_freight',
   ]);
 
   private async handleToolCall(event: any): Promise<void> {
@@ -654,9 +641,6 @@ export class TwilioVoiceSessionDO extends DurableObject<Env> {
         this.logger?.setPhase(ConversationPhase.CONTACT_DETAILS);
       } else if (name === 'collect_shipping_address') {
         this.logger?.setPhase(ConversationPhase.DELIVERY_ADDRESS);
-      } else if (name === 'create_hubspot_deal') {
-        this.session!.dealCreationAttempted = true;
-        this.logger?.setPhase(ConversationPhase.QUOTE_CREATION);
       } else if (name === 'end_call') {
         this.logger?.setPhase(ConversationPhase.ENDING);
       }
@@ -739,7 +723,7 @@ export class TwilioVoiceSessionDO extends DurableObject<Env> {
   }
 
   /**
-   * Store transcript in local buffer (used for loop detection + HubSpot upload)
+   * Store transcript in local buffer (used for loop detection and diagnostics)
    */
   private storeTranscript(
     role: string,
@@ -779,19 +763,13 @@ export class TwilioVoiceSessionDO extends DurableObject<Env> {
       const duration = Math.floor((Date.now() - this.session.startTime) / 1000);
 
       let conversionType: string | null = null;
-      if (this.session.hubspotDealId || this.session.dealCreationAttempted) {
-        conversionType = 'quote_request';
-      } else if (this.session.lineItems.length > 0) {
-        conversionType = 'product_inquiry';
+      if (this.session.transferRequested) {
+        conversionType = 'transfer';
       } else if (this.session.customerData.email) {
         conversionType = 'lead_capture';
       }
 
       console.log(`[Finalize] ${this.session.conversationId}: ${duration}s, ${this.transcriptSequence} turns, conversion=${conversionType || 'none'}, audio: sent=${this.audioPacketsSent} recv=${this.audioPacketsReceived}`);
-
-      if (this.session.hubspotDealId) {
-        await this.uploadTranscriptToHubSpot(duration);
-      }
 
       this.logger?.log('info', 'Conversation finalized', {
         duration_seconds: duration,
@@ -800,75 +778,6 @@ export class TwilioVoiceSessionDO extends DurableObject<Env> {
       });
     } catch (error) {
       console.error('[Finalize] Error:', error);
-    }
-  }
-
-  private async uploadTranscriptToHubSpot(durationSeconds: number): Promise<void> {
-    try {
-      const transcriptEntries = this.transcriptBuffer;
-
-      let formattedTranscript = `CALL TRANSCRIPT\n==================\n\n`;
-      formattedTranscript += `Date: ${new Date(this.session!.startTime).toLocaleString(this.env.LOCALE || 'en-US', { timeZone: this.env.TIMEZONE || 'UTC' })}\n`;
-      formattedTranscript += `Duration: ${Math.floor(durationSeconds / 60)}m ${durationSeconds % 60}s\n`;
-      formattedTranscript += `Phone: ${this.session!.phoneNumber}\n`;
-      formattedTranscript += `Turns: ${transcriptEntries.length}\n\n---\n\n`;
-
-      transcriptEntries.forEach((entry) => {
-        const speaker = entry.role === 'user' ? 'Customer' : entry.role === 'assistant' ? 'Agent' : 'System';
-        const time = new Date(entry.timestamp).toLocaleTimeString(this.env.LOCALE || 'en-US', { timeZone: this.env.TIMEZONE || 'UTC' });
-        formattedTranscript += `[${time}] ${speaker}:\n${entry.content}\n\n`;
-      });
-
-      formattedTranscript += `---\nEnd of Transcript`;
-
-      const associations: any[] = [];
-      if (this.session!.hubspotContactId) {
-        associations.push({
-          to: { id: this.session!.hubspotContactId },
-          types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 194 }],
-        });
-      }
-      if (this.session!.hubspotCompanyId) {
-        associations.push({
-          to: { id: this.session!.hubspotCompanyId },
-          types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 182 }],
-        });
-      }
-      if (this.session!.hubspotDealId) {
-        associations.push({
-          to: { id: this.session!.hubspotDealId },
-          types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 206 }],
-        });
-      }
-
-      const callResponse = await fetch('https://api.hubapi.com/crm/v3/objects/calls', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.env.HUBSPOT_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          properties: {
-            hs_call_title: `AI Voice Call - ${this.session!.customerData.first_name || 'Customer'} ${this.session!.customerData.last_name || ''}`.trim(),
-            hs_call_body: formattedTranscript,
-            hs_call_duration: durationSeconds * 1000,
-            hs_call_from_number: this.session!.phoneNumber,
-            hs_call_status: 'COMPLETED',
-            hs_call_direction: 'INBOUND',
-            hs_timestamp: new Date(this.session!.startTime).toISOString(),
-          },
-          associations,
-        }),
-      });
-
-      if (callResponse.ok) {
-        console.log('[HubSpot] Transcript uploaded as call record');
-      } else {
-        const errorText = await callResponse.text();
-        console.error('[HubSpot] Failed to upload transcript:', errorText);
-      }
-    } catch (error) {
-      console.error('[HubSpot] Error uploading transcript:', error);
     }
   }
 

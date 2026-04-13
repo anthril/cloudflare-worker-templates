@@ -17,14 +17,6 @@ export interface Env {
   KB_INDEX: Vectorize;
   PRODUCT_DATA: KVNamespace;
   OPENAI_API_KEY: string;
-  WOOCOMMERCE_KEY: string;
-  WOOCOMMERCE_SECRET: string;
-  HUBSPOT_API_KEY: string;
-  HUBSPOT_PIPELINE_ID?: string;
-  HUBSPOT_DEAL_STAGE_ID?: string;
-  HUBSPOT_OWNER_ID?: string;
-  SHIPPING_API_URL?: string;
-  SHIPPING_API_KEY?: string;
   ENVIRONMENT?: string;
   MAX_CALL_DURATION_MINUTES?: string;
 }

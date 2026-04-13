@@ -1,18 +1,14 @@
-import type { Env, WooCommerceProduct } from './types';
-import { generateEmbeddings, buildSearchableText, stripHtml } from './utils';
+import type { Env, WooCommerceProduct, SyncResult } from './types';
+import { generateEmbeddings, buildSearchableText, stripHtml, fetchWithRetry } from './utils';
 
 const PER_PAGE = 50;
 const MAX_PAGES = 100; // Safety limit: 5000 products max
-const VECTORIZE_BATCH_SIZE = 100; // Vectorize upsert limit per call
+const CHUNK_SIZE = 20;
 
 /**
  * Sync all published WooCommerce products to Vectorize + KV.
  */
-export async function syncAllProducts(env: Env): Promise<{
-  synced: number;
-  errors: number;
-  deleted: number;
-}> {
+export async function syncAllProducts(env: Env): Promise<SyncResult> {
   console.log('[ProductSync] Starting full WooCommerce product sync');
   const startTime = Date.now();
 
@@ -23,7 +19,7 @@ export async function syncAllProducts(env: Env): Promise<{
   // Step 1: Fetch all published products from WooCommerce
   while (page <= MAX_PAGES) {
     console.log(`[ProductSync] Fetching page ${page}...`);
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `${env.WOOCOMMERCE_URL}/wp-json/wc/v3/products?per_page=${PER_PAGE}&page=${page}&status=publish`,
       { headers: { 'Authorization': `Basic ${auth}` } }
     );
@@ -45,13 +41,10 @@ export async function syncAllProducts(env: Env): Promise<{
 
   console.log(`[ProductSync] Total products fetched: ${allProducts.length}`);
 
-  // Step 2: Generate embeddings in batches
+  // Step 2: Generate embeddings and sync in batches
   let synced = 0;
   let errors = 0;
-  const syncedWooIds = new Set<number>();
 
-  // Process in chunks to manage memory and API limits
-  const CHUNK_SIZE = 20;
   for (let i = 0; i < allProducts.length; i += CHUNK_SIZE) {
     const chunk = allProducts.slice(i, i + CHUNK_SIZE);
 
@@ -80,7 +73,7 @@ export async function syncAllProducts(env: Env): Promise<{
       // Upsert to Vectorize
       await env.PRODUCTS_INDEX.upsert(vectors);
 
-      // Store full product data in KV
+      // Store full product data in KV (30-day TTL — 3x safety margin for weekly sync)
       const kvPromises = chunk.map(product =>
         env.PRODUCT_DATA.put(
           `product:${product.id}`,
@@ -101,12 +94,11 @@ export async function syncAllProducts(env: Env): Promise<{
             permalink: product.permalink,
             images: product.images,
           }),
-          { expirationTtl: 60 * 60 * 24 * 14 } // 14 day TTL
+          { expirationTtl: 60 * 60 * 24 * 30 } // 30 day TTL
         )
       );
       await Promise.all(kvPromises);
 
-      for (const p of chunk) syncedWooIds.add(p.id);
       synced += chunk.length;
       console.log(`[ProductSync] Synced batch ${Math.floor(i / CHUNK_SIZE) + 1}: ${chunk.length} products`);
     } catch (err) {
@@ -115,23 +107,52 @@ export async function syncAllProducts(env: Env): Promise<{
     }
   }
 
-  // Step 3: Verify synced vectors (batch getByIds in chunks of 20)
+  // Step 3: Clean up deleted products
   let deleted = 0;
   try {
-    const allIds = allProducts.map(p => `product_${p.id}`);
-    let verifiedCount = 0;
-    for (let i = 0; i < allIds.length; i += 20) {
-      const batch = allIds.slice(i, i + 20);
-      const existing = await env.PRODUCTS_INDEX.getByIds(batch);
-      verifiedCount += existing.length;
+    const currentIds = allProducts.map(p => p.id);
+    const previousIdsRaw = await env.PRODUCT_DATA.get('_sync:product_ids', 'json') as number[] | null;
+
+    if (previousIdsRaw) {
+      const currentIdSet = new Set(currentIds);
+      const removedIds = previousIdsRaw.filter(id => !currentIdSet.has(id));
+
+      if (removedIds.length > 0) {
+        // Delete stale vectors from Vectorize
+        const vectorIds = removedIds.map(id => `product_${id}`);
+        await env.PRODUCTS_INDEX.deleteByIds(vectorIds);
+
+        // Delete stale product data from KV
+        await Promise.all(removedIds.map(id => env.PRODUCT_DATA.delete(`product:${id}`)));
+
+        deleted = removedIds.length;
+        console.log(`[ProductSync] Deleted ${deleted} stale products`);
+      }
     }
-    console.log(`[ProductSync] Verified ${verifiedCount} vectors in index`);
+
+    // Store current product IDs for next sync comparison (no TTL)
+    await env.PRODUCT_DATA.put('_sync:product_ids', JSON.stringify(currentIds));
   } catch (err) {
-    console.error('[ProductSync] Error during verification:', err);
+    console.error('[ProductSync] Error during stale product cleanup:', err);
   }
 
-  const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-  console.log(`[ProductSync] Complete: ${synced} synced, ${errors} errors, ${deleted} deleted in ${duration}s`);
+  // Step 4: Store sync metadata (no TTL — persists indefinitely)
+  const durationSeconds = parseFloat(((Date.now() - startTime) / 1000).toFixed(1));
+  const result: SyncResult = {
+    synced,
+    errors,
+    deleted,
+    total_products: allProducts.length,
+    duration_seconds: durationSeconds,
+    completed_at: new Date().toISOString(),
+  };
 
-  return { synced, errors, deleted };
+  try {
+    await env.PRODUCT_DATA.put('_sync:latest', JSON.stringify(result));
+  } catch (err) {
+    console.error('[ProductSync] Error storing sync metadata:', err);
+  }
+
+  console.log(`[ProductSync] Complete: ${synced} synced, ${errors} errors, ${deleted} deleted in ${durationSeconds}s`);
+  return result;
 }

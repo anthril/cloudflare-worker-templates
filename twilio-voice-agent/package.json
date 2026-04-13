@@ -9,7 +9,7 @@
     "tail": "wrangler tail",
     "types": "wrangler types"
   },
-  "keywords": ["cloudflare", "workers", "twilio", "openai", "voice-agent", "realtime", "hubspot"],
+  "keywords": ["cloudflare", "workers", "twilio", "openai", "voice-agent", "realtime"],
   "author": "",
   "license": "MIT",
   "devDependencies": {

@@ -51,11 +51,8 @@ export enum ConversationPhase {
   INITIALIZATION = 'initialization',
   GREETING = 'greeting',
   PRODUCT_IDENTIFICATION = 'product_identification',
-  QUANTITY_CONFIRMATION = 'quantity_confirmation',
   CONTACT_DETAILS = 'contact_details',
   DELIVERY_ADDRESS = 'delivery_address',
-  DELIVERY_NOTES = 'delivery_notes',
-  QUOTE_CREATION = 'quote_creation',
   ENDING = 'ending',
   TRANSFER = 'transfer',
   ERROR = 'error'

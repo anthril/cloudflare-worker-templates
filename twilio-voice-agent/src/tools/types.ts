@@ -2,18 +2,6 @@
  * Shared types for tool execution.
  */
 
-export interface LineItem {
-  name: string;
-  sku?: string;
-  quantity: number;
-  price: number;
-  description?: string;
-  length_cm?: number;
-  width_cm?: number;
-  height_cm?: number;
-  weight_kg?: number;
-}
-
 export interface AddressInfo {
   first_name?: string;
   last_name?: string;
@@ -34,12 +22,6 @@ export interface CustomerData {
   tax_id?: string;
 }
 
-export interface FreightQuote {
-  carrier: string;
-  cost: number;
-  transitDays: number;
-}
-
 export interface TransferRequest {
   reason: string;
   summary: string;
@@ -54,17 +36,7 @@ export interface CallSession {
   startTime: number;
   customerData: CustomerData;
   shippingAddress?: AddressInfo;
-  billingAddress?: AddressInfo;
   addressType?: 'Commercial' | 'Residential';
-  deliveryNotes?: string;
-  hubspotContactId?: string;
-  hubspotCompanyId?: string;
-  hubspotDealId?: string;
-  dealCreationAttempted: boolean;
-  lineItems: LineItem[];
-  freightCalculationFailed: boolean;
-  freightQuote?: FreightQuote;
-  conversationSummary?: string;
   lastAgentResponses: string[];
   totalTurns: number;
   lastToolCalled: string | null;
@@ -81,14 +53,6 @@ export interface ToolEnv {
   KB_INDEX: Vectorize;
   PRODUCT_DATA: KVNamespace;
   OPENAI_API_KEY: string;
-  HUBSPOT_API_KEY: string;
-  HUBSPOT_PIPELINE_ID?: string;
-  HUBSPOT_DEAL_STAGE_ID?: string;
-  HUBSPOT_OWNER_ID?: string;
-  WOOCOMMERCE_KEY: string;
-  WOOCOMMERCE_SECRET: string;
-  SHIPPING_API_URL?: string;
-  SHIPPING_API_KEY?: string;
   SLACK_ACCESS_TOKEN?: string;
   SLACK_CHAT_REQUEST_CHANNEL?: string;
   SLACK_MENTION_USER_ID?: string;

@@ -7,7 +7,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
-    "types": "wrangler types"
+    "types": "wrangler types",
+    "setup": "npx wrangler vectorize create products --dimensions=1536 --metric=cosine"
   },
   "keywords": ["cloudflare", "workers", "vectorize", "woocommerce", "embeddings", "semantic-search"],
   "author": "",
@@ -17,5 +18,18 @@
     "typescript": "^5.7.2",
     "wrangler": "^4.0.0"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "cloudflare": {
+    "bindings": {
+      "OPENAI_API_KEY": {
+        "description": "OpenAI API key for generating text-embedding-3-small vectors. Get one at https://platform.openai.com/api-keys"
+      },
+      "WOOCOMMERCE_KEY": {
+        "description": "WooCommerce REST API consumer key (ck_...). Generate at WooCommerce > Settings > Advanced > REST API with Read permissions."
+      },
+      "WOOCOMMERCE_SECRET": {
+        "description": "WooCommerce REST API consumer secret (cs_...). Generated alongside the consumer key."
+      }
+    }
+  }
 }

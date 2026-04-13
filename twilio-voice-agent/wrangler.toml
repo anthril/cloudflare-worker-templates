@@ -28,7 +28,7 @@ index_name = "products"
 binding = "KB_INDEX"
 index_name = "knowledge-base"
 
-# KV namespace for full product data (dimensions, weight, attributes)
+# KV namespace for full product data
 # Create with: npx wrangler kv namespace create PRODUCT_DATA
 [[kv_namespaces]]
 binding = "PRODUCT_DATA"
@@ -62,25 +62,12 @@ MAX_CALL_DURATION_MINUTES = "30"
 # COMPANY_NAME = "Your Company"
 # AGENT_NAME = "Alex"
 # WAREHOUSE_LOCATION = "Main Warehouse"
-# HIGH_VALUE_THRESHOLD = "5000"
 # TIMEZONE = "America/New_York"
 # LOCALE = "en-US"
 # DEFAULT_COUNTRY = "US"
 
-# HubSpot Configuration — get these from your HubSpot account
-# HUBSPOT_PIPELINE_ID = "your-pipeline-id"
-# HUBSPOT_DEAL_STAGE_ID = "your-deal-stage-id"
-# HUBSPOT_OWNER_ID = "your-owner-id"
-
-# Shipping API (optional — replace with your shipping provider)
-# SHIPPING_API_URL = "https://your-shipping-api.com/quote"
-
 # Secrets (set via: npx wrangler secret put SECRET_NAME):
 # OPENAI_API_KEY          - OpenAI API key (required)
-# HUBSPOT_API_KEY         - HubSpot private app API key
-# WOOCOMMERCE_KEY         - WooCommerce REST API consumer key
-# WOOCOMMERCE_SECRET      - WooCommerce REST API consumer secret
-# SHIPPING_API_KEY        - Your shipping provider API key (optional)
 # SLACK_ACCESS_TOKEN      - Slack Bot OAuth token (optional)
 # SLACK_CHAT_REQUEST_CHANNEL - Slack channel for transfer notifications (optional)
 # SLACK_MENTION_USER_ID   - Slack user ID to mention on transfers (optional)

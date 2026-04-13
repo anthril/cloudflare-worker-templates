@@ -1,0 +1,13 @@
+# WooCommerce REST API credentials
+# Generate at: WordPress Admin > WooCommerce > Settings > Advanced > REST API
+# Permissions required: Read
+WOOCOMMERCE_KEY=ck_your_consumer_key_here
+WOOCOMMERCE_SECRET=cs_your_consumer_secret_here
+
+# OpenAI API key for generating embeddings
+# Get at: https://platform.openai.com/api-keys
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# Bearer token for authenticating manual sync and validate requests
+# Generate with: openssl rand -hex 32
+SYNC_AUTH_TOKEN=your-secret-token-here
