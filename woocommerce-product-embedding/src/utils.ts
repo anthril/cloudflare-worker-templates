@@ -104,3 +104,59 @@ export function buildSearchableText(product: {
 export function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, '');
 }
+
+/**
+ * Verify WooCommerce webhook HMAC-SHA256 signature.
+ *
+ * WooCommerce signs the raw request body using the webhook secret
+ * and sends the base64-encoded HMAC-SHA256 in X-WC-Webhook-Signature.
+ *
+ * @param rawBody  - The raw request body bytes (NOT re-serialized JSON)
+ * @param secret   - The webhook secret configured in WooCommerce
+ * @param signature - The value of X-WC-Webhook-Signature header
+ * @returns true if the signature is valid
+ */
+export async function verifyWebhookSignature(
+  rawBody: ArrayBuffer,
+  secret: string,
+  signature: string
+): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signed = await crypto.subtle.sign('HMAC', key, rawBody);
+  const expectedSignature = arrayBufferToBase64(signed);
+
+  return timingSafeEqual(expectedSignature, signature);
+}
+
+/** Convert ArrayBuffer to base64 string. */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/** Constant-time string comparison to prevent timing attacks. */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+
+  const encoder = new TextEncoder();
+  const aBytes = encoder.encode(a);
+  const bBytes = encoder.encode(b);
+
+  let result = 0;
+  for (let i = 0; i < aBytes.length; i++) {
+    result |= aBytes[i] ^ bBytes[i];
+  }
+  return result === 0;
+}

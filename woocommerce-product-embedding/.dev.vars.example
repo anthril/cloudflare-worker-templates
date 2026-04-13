@@ -11,3 +11,7 @@ OPENAI_API_KEY=sk-your-openai-api-key-here
 # Bearer token for authenticating manual sync and validate requests
 # Generate with: openssl rand -hex 32
 SYNC_AUTH_TOKEN=your-secret-token-here
+
+# WooCommerce webhook secret for HMAC-SHA256 signature verification
+# Must match the secret configured in WooCommerce Admin > Settings > Advanced > Webhooks
+WOOCOMMERCE_WEBHOOK_SECRET=your-webhook-secret-here

@@ -156,3 +156,71 @@ export async function syncAllProducts(env: Env): Promise<SyncResult> {
   console.log(`[ProductSync] Complete: ${synced} synced, ${errors} errors, ${deleted} deleted in ${durationSeconds}s`);
   return result;
 }
+
+/**
+ * Sync a single product: generate embedding, upsert to Vectorize, store in KV.
+ * Used by the queue consumer for webhook-driven updates.
+ */
+export async function syncSingleProduct(
+  product: WooCommerceProduct,
+  env: Env
+): Promise<void> {
+  const searchText = buildSearchableText(product);
+  const embeddings = await generateEmbeddings([searchText], env.OPENAI_API_KEY);
+
+  const vector: VectorizeVector = {
+    id: `product_${product.id}`,
+    values: embeddings[0],
+    metadata: {
+      name: product.name,
+      price: parseFloat(product.regular_price || product.price) || 0,
+      sale_price: parseFloat(product.sale_price) || 0,
+      sku: product.sku || '',
+      short_description: stripHtml(product.short_description || '').substring(0, 500),
+      product_url: product.permalink || '',
+      product_image_url: product.images?.[0]?.src || '',
+      woocommerce_id: product.id,
+      stock_quantity: product.stock_quantity || 0,
+      categories: (product.categories || []).map(c => c.name).join(', '),
+    },
+  };
+
+  await env.PRODUCTS_INDEX.upsert([vector]);
+
+  await env.PRODUCT_DATA.put(
+    `product:${product.id}`,
+    JSON.stringify({
+      woocommerce_id: product.id,
+      name: product.name,
+      description: product.description,
+      short_description: product.short_description,
+      regular_price: product.regular_price,
+      price: product.price,
+      sale_price: product.sale_price,
+      sku: product.sku,
+      stock_quantity: product.stock_quantity,
+      weight: product.weight,
+      dimensions: product.dimensions,
+      categories: product.categories,
+      attributes: product.attributes,
+      permalink: product.permalink,
+      images: product.images,
+    }),
+    { expirationTtl: 60 * 60 * 24 * 30 } // 30 day TTL
+  );
+}
+
+/**
+ * Delete a single product from Vectorize and KV.
+ * Used by the queue consumer for webhook-driven deletes.
+ * Idempotent: deleting a non-existent product is a no-op.
+ */
+export async function deleteSingleProduct(
+  productId: number,
+  env: Env
+): Promise<void> {
+  await Promise.all([
+    env.PRODUCTS_INDEX.deleteByIds([`product_${productId}`]),
+    env.PRODUCT_DATA.delete(`product:${productId}`),
+  ]);
+}

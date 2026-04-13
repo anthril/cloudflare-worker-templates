@@ -8,7 +8,8 @@
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
     "types": "wrangler types",
-    "setup": "npx wrangler vectorize create products --dimensions=1536 --metric=cosine"
+    "setup": "npx wrangler vectorize create products --dimensions=1536 --metric=cosine",
+    "setup:queues": "npx wrangler queues create woocommerce-product-sync && npx wrangler queues create woocommerce-product-sync-dlq"
   },
   "keywords": ["cloudflare", "workers", "vectorize", "woocommerce", "embeddings", "semantic-search"],
   "author": "",
@@ -29,6 +30,9 @@
       },
       "WOOCOMMERCE_SECRET": {
         "description": "WooCommerce REST API consumer secret (cs_...). Generated alongside the consumer key."
+      },
+      "WOOCOMMERCE_WEBHOOK_SECRET": {
+        "description": "HMAC-SHA256 secret for verifying WooCommerce webhooks. Must match the secret in WooCommerce Admin > Webhooks."
       }
     }
   }

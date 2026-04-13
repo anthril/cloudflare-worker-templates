@@ -18,7 +18,21 @@ index_name = "products"
 [[kv_namespaces]]
 binding = "PRODUCT_DATA"
 
-# Weekly product sync schedule (adjust to your timezone)
+# Queue for webhook-driven product sync
+# Create with: npx wrangler queues create woocommerce-product-sync
+[[queues.producers]]
+binding = "PRODUCT_SYNC_QUEUE"
+queue = "woocommerce-product-sync"
+
+# This worker also consumes from the same queue
+[[queues.consumers]]
+queue = "woocommerce-product-sync"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+dead_letter_queue = "woocommerce-product-sync-dlq"
+
+# Weekly product sync schedule — acts as a safety net / reconciliation
 # Default: Saturday 18:00 UTC
 [triggers]
 crons = ["0 18 * * 6"]
@@ -43,5 +57,7 @@ WOOCOMMERCE_URL = "https://your-store.com"
 required = ["OPENAI_API_KEY", "WOOCOMMERCE_KEY", "WOOCOMMERCE_SECRET"]
 
 # Optional secrets:
-# SYNC_AUTH_TOKEN - Bearer token for authenticating manual /sync-products and /validate requests
-#                   Generate with: openssl rand -hex 32
+# SYNC_AUTH_TOKEN              - Bearer token for /sync-products and /validate endpoints
+#                                Generate with: openssl rand -hex 32
+# WOOCOMMERCE_WEBHOOK_SECRET   - HMAC-SHA256 secret for verifying WooCommerce webhooks
+#                                Must match the secret set in WooCommerce Admin > Webhooks
