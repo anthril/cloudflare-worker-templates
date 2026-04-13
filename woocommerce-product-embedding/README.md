@@ -303,6 +303,54 @@ curl -X POST http://localhost:8787/sync-products \
   -H "Authorization: Bearer YOUR_SYNC_AUTH_TOKEN"
 ```
 
+## Testing Vector Search Accuracy
+
+After syncing products, verify the embeddings are returning relevant results:
+
+```bash
+# 1. Copy the example test cases and customize with your product names/categories
+cp scripts/test-cases.example.json scripts/test-cases.json
+
+# 2. Edit test-cases.json with your actual products
+
+# 3. Run the tests
+CF_ACCOUNT_ID="your-account-id" \
+OPENAI_API_KEY="sk-..." \
+CLOUDFLARE_API_TOKEN="your-cf-token" \
+npm run test:vectors
+```
+
+The test suite supports two test types:
+
+**Product Lookup** — Search by name, verify the correct product appears in top results:
+```json
+{
+  "query": "wireless bluetooth headphones",
+  "type": "product_lookup",
+  "expect": {
+    "top_k": 5,
+    "must_contain_any": ["Wireless Headphones", "Bluetooth"],
+    "min_score": 0.6
+  }
+}
+```
+
+**Category Query** — Natural language search, verify results from expected categories:
+```json
+{
+  "query": "gift ideas for a coffee lover",
+  "type": "category_query",
+  "expect": {
+    "top_k": 10,
+    "must_contain_categories": ["Coffee", "Mugs", "Kitchen"],
+    "min_relevant": 2,
+    "min_score": 0.3
+  }
+}
+```
+
+Set `VECTORIZE_INDEX` env var if your index name differs from the default `products`.
+
 ## Development
 
 ```bash
@@ -311,6 +359,7 @@ npm run tail         # Stream live logs
 npm run types        # Generate TypeScript types from wrangler.toml
 npm run setup        # Create Vectorize index
 npm run setup:queues # Create Cloudflare Queues (main + DLQ)
+npm run test:vectors # Run vector search accuracy tests
 ```
 
 ## Troubleshooting

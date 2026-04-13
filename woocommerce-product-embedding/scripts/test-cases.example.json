@@ -1,0 +1,81 @@
+[
+  {
+    "_comment": "PRODUCT LOOKUP: Search by product name, verify the correct product appears in top results.",
+    "query": "blue widget large",
+    "type": "product_lookup",
+    "expect": {
+      "top_k": 5,
+      "must_contain_any": ["Blue Widget", "Large Widget"],
+      "min_score": 0.6
+    }
+  },
+  {
+    "query": "organic cotton t-shirt black",
+    "type": "product_lookup",
+    "expect": {
+      "top_k": 5,
+      "must_contain_any": ["Cotton T-Shirt", "Organic Cotton"],
+      "min_score": 0.6
+    }
+  },
+  {
+    "query": "wireless bluetooth headphones",
+    "type": "product_lookup",
+    "expect": {
+      "top_k": 5,
+      "must_contain_any": ["Wireless Headphones", "Bluetooth"],
+      "min_score": 0.6
+    }
+  },
+  {
+    "query": "stainless steel water bottle 750ml",
+    "type": "product_lookup",
+    "expect": {
+      "top_k": 5,
+      "must_contain_any": ["Water Bottle", "Stainless Steel"],
+      "min_score": 0.6
+    }
+  },
+
+  {
+    "_comment": "CATEGORY QUERY: Natural language search, verify results come from relevant product categories.",
+    "query": "something to wear to the gym",
+    "type": "category_query",
+    "expect": {
+      "top_k": 10,
+      "must_contain_categories": ["Clothing", "Activewear", "Sportswear"],
+      "min_relevant": 2,
+      "min_score": 0.3
+    }
+  },
+  {
+    "query": "gift ideas for a coffee lover",
+    "type": "category_query",
+    "expect": {
+      "top_k": 10,
+      "must_contain_categories": ["Coffee", "Mugs", "Kitchen"],
+      "min_relevant": 2,
+      "min_score": 0.3
+    }
+  },
+  {
+    "query": "home office desk accessories",
+    "type": "category_query",
+    "expect": {
+      "top_k": 10,
+      "must_contain_categories": ["Office", "Accessories", "Desk"],
+      "min_relevant": 2,
+      "min_score": 0.3
+    }
+  },
+  {
+    "query": "eco-friendly sustainable products",
+    "type": "category_query",
+    "expect": {
+      "top_k": 10,
+      "must_contain_categories": ["Eco", "Sustainable", "Organic"],
+      "min_relevant": 1,
+      "min_score": 0.3
+    }
+  }
+]

@@ -9,7 +9,8 @@
     "tail": "wrangler tail",
     "types": "wrangler types",
     "setup": "npx wrangler vectorize create products --dimensions=1536 --metric=cosine",
-    "setup:queues": "npx wrangler queues create woocommerce-product-sync && npx wrangler queues create woocommerce-product-sync-dlq"
+    "setup:queues": "npx wrangler queues create woocommerce-product-sync && npx wrangler queues create woocommerce-product-sync-dlq",
+    "test:vectors": "npx tsx scripts/test-queries.ts"
   },
   "keywords": ["cloudflare", "workers", "vectorize", "woocommerce", "embeddings", "semantic-search"],
   "author": "",
