@@ -1,0 +1,6 @@
+# OpenAI API key for generating search embeddings
+OPENAI_API_KEY=sk-...
+
+# Bearer token for authenticating API requests
+# Generate with: openssl rand -hex 32
+API_SECRET=your-secret-here

@@ -1,0 +1,111 @@
+{
+  "_description": "Test cases for the Product Search API. Run these against your deployed worker to verify functionality.",
+  "_auth": "All requests (except health) require: Authorization: Bearer <API_SECRET>",
+
+  "health_check": {
+    "method": "GET",
+    "url": "/health",
+    "auth": false,
+    "expected": "200 with status ok"
+  },
+
+  "auth_rejection": {
+    "method": "POST",
+    "url": "/",
+    "auth": false,
+    "body": { "query": "test" },
+    "expected": "401 Unauthorized"
+  },
+
+  "search_queries": [
+    {
+      "name": "Basic product search",
+      "body": { "query": "wireless bluetooth headphones", "topK": 3 },
+      "notes": "Should return relevant audio/electronics products."
+    },
+    {
+      "name": "Natural language query",
+      "body": { "query": "gift ideas for a coffee lover", "topK": 5 },
+      "notes": "Tests semantic understanding — should return coffee-related products across categories."
+    },
+    {
+      "name": "Specific product attributes",
+      "body": { "query": "organic cotton t-shirt black medium", "topK": 3 },
+      "notes": "Tests multi-attribute matching (material + color + size)."
+    },
+    {
+      "name": "Category browsing",
+      "body": { "query": "running shoes for men", "topK": 5 },
+      "notes": "Should return products from footwear/athletic categories."
+    },
+    {
+      "name": "Synonym handling",
+      "body": { "query": "laptop bag carry case", "topK": 3 },
+      "notes": "Tests semantic understanding — 'bag' and 'carry case' should match similar products."
+    },
+    {
+      "name": "Price-conscious query",
+      "body": { "query": "affordable desk lamp under $50", "topK": 5 },
+      "notes": "Semantic search doesn't filter by price, but results should skew toward desk/lighting products."
+    },
+    {
+      "name": "Full product enrichment",
+      "body": { "query": "standing desk adjustable", "topK": 2, "includeFullProduct": true },
+      "notes": "Each result should include a fullProduct object with weight, dimensions, and attributes."
+    }
+  ],
+
+  "product_lookup_queries": [
+    {
+      "name": "Valid product lookup",
+      "method": "GET",
+      "url": "/product/12345",
+      "notes": "Replace 12345 with a real WooCommerce product ID from your store. Should return full product data."
+    },
+    {
+      "name": "Non-existent product",
+      "method": "GET",
+      "url": "/product/9999999",
+      "expected": "404 with error: Product not found"
+    },
+    {
+      "name": "Invalid product ID format",
+      "method": "GET",
+      "url": "/product/abc",
+      "expected": "404 Not found (route doesn't match non-numeric IDs)"
+    }
+  ],
+
+  "edge_cases": [
+    {
+      "name": "Empty query",
+      "body": { "query": "" },
+      "expected": "400 — Query must not be empty"
+    },
+    {
+      "name": "Whitespace-only query",
+      "body": { "query": "   " },
+      "expected": "400 — Query must not be empty"
+    },
+    {
+      "name": "Missing query field",
+      "body": {},
+      "expected": "400 — Missing or invalid field: query"
+    },
+    {
+      "name": "Invalid JSON body",
+      "raw_body": "not json",
+      "expected": "400 — Invalid JSON body"
+    },
+    {
+      "name": "topK clamped to 50",
+      "body": { "query": "headphones", "topK": 100 },
+      "expected": "200 — should return max 50 results, not 100"
+    },
+    {
+      "name": "topK minimum 1",
+      "body": { "query": "headphones", "topK": 0 },
+      "expected": "200 — should return at least 1 result"
+    }
+  ]
+}

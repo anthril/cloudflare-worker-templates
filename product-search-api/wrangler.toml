@@ -1,0 +1,39 @@
+name = "product-search-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-06"
+compatibility_flags = ["nodejs_compat"]
+
+# account_id = "your-account-id"
+
+workers_dev = true
+
+# Vectorize index — must match the index created by woocommerce-product-embedding
+# Create with: npx wrangler vectorize create products --dimensions=1536 --metric=cosine
+[[vectorize]]
+binding = "PRODUCTS_INDEX"
+index_name = "products"
+
+# KV namespace — must match the namespace created by woocommerce-product-embedding
+# Get the ID with: npx wrangler kv list
+# Then set it below:
+[[kv_namespaces]]
+binding = "PRODUCT_DATA"
+# id = "your-kv-namespace-id"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+# Required secrets — set via: npx wrangler secret put SECRET_NAME
+# OPENAI_API_KEY   - OpenAI API key for text-embedding-3-small
+#                    Get one at https://platform.openai.com/api-keys
+# API_SECRET       - Bearer token for authenticating requests
+#                    Generate with: openssl rand -hex 32
+[secrets]
+required = ["OPENAI_API_KEY", "API_SECRET"]

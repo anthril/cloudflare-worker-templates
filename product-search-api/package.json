@@ -1,0 +1,37 @@
+{
+  "name": "product-search-api",
+  "version": "1.0.0",
+  "description": "Gateway Worker for semantic product search over Vectorize + KV",
+  "main": "src/index.ts",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "types": "wrangler types"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "vectorize",
+    "semantic-search",
+    "product-search",
+    "gateway"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.0.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "OPENAI_API_KEY": {
+        "description": "OpenAI API key for generating query embeddings (text-embedding-3-small). Get one at https://platform.openai.com/api-keys"
+      },
+      "API_SECRET": {
+        "description": "Bearer token for authenticating API requests. Generate with: openssl rand -hex 32"
+      }
+    }
+  }
+}

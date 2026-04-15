@@ -1,0 +1,231 @@
+{
+  "name": "Product Search AI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a helpful sales assistant for an online store. You help customers find products from the catalog.\n\nYou have two tools available:\n\n1. search_products — Searches the catalog by natural language. Returns product names, prices, SKUs, stock levels, categories, product page URLs, and main images. Use this FIRST whenever the customer asks about products.\n\n2. get_product_details — Fetches full specifications for a single product by ID. Returns everything search_products provides PLUS: dimensions, weight, material specifications, all product attributes, full description, and all images. Use this ONLY when the customer asks about details that search_products doesn't include.\n\nKey guidelines:\n- Always use search_products first when a customer asks about items, pricing, or availability\n- Present prices in the appropriate currency\n- If stock_quantity is 0 or null, mention the item may currently be out of stock and suggest the customer contact the store to confirm\n- When presenting multiple products, briefly list the top 2-3 with name, price, and key details\n- If the customer then asks about dimensions, weight, material specs, or other detailed specifications, use get_product_details with the woocommerce_id from the search results\n- Do NOT call get_product_details unless the customer specifically asks for details that search_products doesn't return\n- Always offer to provide the product page URL if the customer wants to view the product online\n- Be concise — keep answers under 3 sentences when possible\n- If no products match, suggest alternative search terms or offer to help with a different query"
+        }
+      },
+      "id": "agent-node",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [640, 340]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "chat-trigger",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [360, 340],
+      "webhookId": "product-search-agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 1024
+        }
+      },
+      "id": "openai-chat-model",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [540, 560],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_WITH_YOUR_OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "search_products",
+        "description": "Search the product catalog using natural language. Use this tool whenever the customer asks about products, pricing, availability, product recommendations, or wants to find something specific.\n\nInput: A search query describing what the customer is looking for.\nOutput: A list of matching products with names, prices, SKUs, stock levels, categories, product page URLs, and main image URL.\n\nIMPORTANT: This tool returns a product summary only. It does NOT include dimensions, weight, material specifications, or other detailed attributes. If the customer asks about those specifications, you must follow up with the get_product_details tool using the woocommerce_id from these results.\n\nGuidelines:\n- Convert the customer's question into a descriptive search query\n- For general browsing, use broad queries like \"wireless headphones\" or \"running shoes\"\n- For specific items, include details like \"blue cotton t-shirt medium\"\n- The search understands product names, descriptions, categories, and attributes\n- Results are ranked by relevance (score 0-1, higher is better)\n- Always mention the price and availability when presenting results\n- If stock_quantity is 0, tell the customer the item may be out of stock\n- If the customer then asks about dimensions, weight, or material specs, use get_product_details with the woocommerce_id",
+        "method": "POST",
+        "url": "https://product-search-api.YOUR_SUBDOMAIN.workers.dev",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"{{ $fromAI('searchQuery', 'The natural language search query based on what the customer is looking for. Be descriptive and include any specific details like size, material, type, or use case.') }}\",\n  \"topK\": 3\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "autodetect"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "tool-search-products",
+      "name": "Product Search",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [720, 560],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Product Search API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "get_product_details",
+        "description": "Get full product details by product ID. Use this AFTER search_products when the customer asks about information not included in search results.\n\nUse this tool when the customer asks about:\n- Dimensions (length, width, height)\n- Weight\n- Material or specifications\n- Available product options or variants\n- Full product description\n- Additional product images beyond the main image\n\nInput: A WooCommerce product ID number (the woocommerce_id field from search results).\nOutput: Complete product data including dimensions, weight, attributes, full HTML description, and all product images.\n\nGuidelines:\n- You MUST call search_products first to get the woocommerce_id — never guess a product ID\n- Only call this when the customer needs details that search_products does not provide (search already covers: name, price, SKU, stock, categories, short description, product URL, main image)\n- The description and short_description fields may contain HTML tags — extract and present the plain text content\n- Attributes are returned as name/options pairs (e.g., Color: \"Blue\", Size: \"Medium\")",
+        "method": "GET",
+        "url": "=https://product-search-api.YOUR_SUBDOMAIN.workers.dev/product/{{ $fromAI('productId', 'The WooCommerce product ID number from a previous search result (the woocommerce_id field). Must be a number.') }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": false,
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "autodetect"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "tool-get-product-details",
+      "name": "Product Details",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [900, 560],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Product Search API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "check_product_availability",
+        "description": "Check if the Product Search API is online and responding. Use this if a previous product search failed or if you need to verify the system is working before searching.\n\nInput: No input required.\nOutput: API health status with timestamp.",
+        "method": "GET",
+        "url": "https://product-search-api.YOUR_SUBDOMAIN.workers.dev/health",
+        "authentication": "none",
+        "sendBody": false,
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "autodetect"
+            }
+          },
+          "timeout": 5000
+        }
+      },
+      "id": "tool-health-check",
+      "name": "API Health Check",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1080, 560]
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 20
+      },
+      "id": "memory-window",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [440, 560]
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Product Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Product Details": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Health Check": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "AI Agent",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

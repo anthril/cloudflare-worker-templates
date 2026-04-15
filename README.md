@@ -8,6 +8,72 @@ Production-ready Cloudflare Worker templates for common integrations. Each templ
 |----------|-------------|------------------|
 | [Twilio Voice Agent](./twilio-voice-agent/) | AI-powered voice agent using Twilio Media Streams + OpenAI Realtime API | Twilio, OpenAI, HubSpot CRM, Cloudflare Durable Objects, Vectorize |
 | [WooCommerce Product Embedding](./woocommerce-product-embedding/) | Sync WooCommerce products to Cloudflare Vectorize for semantic search | WooCommerce, OpenAI Embeddings, Cloudflare Vectorize, KV |
+| [Product Search API](./product-search-api/) | Gateway Worker for semantic product search over Vectorize + KV | OpenAI Embeddings, Cloudflare Vectorize, KV |
+
+## Architecture
+
+```
+                                    ┌─────────────────────────┐
+                                    │      WooCommerce        │
+                                    │    (Product Store)      │
+                                    └────────────┬────────────┘
+                                                 │
+                              Webhooks (real-time) + Cron (weekly)
+                                                 │
+                                                 ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          CLOUDFLARE WORKERS                                 │
+│                                                                             │
+│  ┌───────────────────────────────┐    WRITE    ┌──────────────────────┐     │
+│  │  woocommerce-product-embedding│────────────>│  Vectorize Index     │     │
+│  │                               │             │  (products)          │     │
+│  │  Sync products, generate      │             │  1536-dim embeddings │     │
+│  │  embeddings, manage lifecycle │──┐          └──────────┬───────────┘     │
+│  └───────────────────────────────┘  │                     │                 │
+│                                     │ WRITE               │ READ            │
+│                                     ▼                     │                 │
+│                              ┌──────────────┐             │                 │
+│                              │  KV Store    │             │                 │
+│                              │  (products)  │             │                 │
+│                              │  Full JSON   │             │                 │
+│                              └──────┬───────┘             │                 │
+│                                     │                     │                 │
+│                                     │ READ                │                 │
+│                                     │                     │                 │
+│  ┌───────────────────────────────┐  │                     │                 │
+│  │  product-search-api           │<─┘                     │                 │
+│  │                               │<───────────────────────┘                 │
+│  │  Semantic search gateway      │                                          │
+│  │  Bearer token auth            │──── OpenAI (query embeddings)            │
+│  └──────────────┬────────────────┘                                          │
+│                 │                                                            │
+│                 │          ┌───────────────────────────────┐                 │
+│                 │          │  twilio-voice-agent            │                │
+│                 │          │                               │                 │
+│                 │          │  AI voice conversations       │                 │
+│                 │          │  Durable Objects sessions     │── Twilio        │
+│                 │          │  CRM integration              │── HubSpot       │
+│                 │          │  Product search tool          │── OpenAI        │
+│                 │          └──────────────┬────────────────┘                 │
+│                 │                         │                                  │
+└─────────────────┼─────────────────────────┼──────────────────────────────────┘
+                  │                         │
+    ──────────────┼─────────────────────────┼──────────────────
+    CONSUMERS     │                         │
+                  ▼                         ▼
+         ┌────────────────┐        ┌────────────────┐
+         │  n8n / HTTP    │        │  Phone Call     │
+         │  AI Agents     │        │  (Twilio)       │
+         │  Any REST      │        │                 │
+         │  client        │        │                 │
+         └────────────────┘        └────────────────┘
+```
+
+**Shared resources:** `woocommerce-product-embedding` writes to Vectorize + KV. Both `product-search-api` and `twilio-voice-agent` read from them.
+
+**Deploy order:** `woocommerce-product-embedding` first → sync products → then deploy `product-search-api` and/or `twilio-voice-agent`.
+
+---
 
 ## Getting Started
 
@@ -43,6 +109,15 @@ cloudflare-worker-templates/
 │   │   ├── sync-products.ts      # WooCommerce sync logic
 │   │   ├── types.ts              # TypeScript interfaces
 │   │   └── utils.ts              # Embedding utilities
+│   ├── wrangler.toml
+│   └── README.md
+│
+├── product-search-api/            # Gateway API for product search
+│   ├── src/
+│   │   └── index.ts              # Worker entry point
+│   ├── examples/
+│   │   ├── n8n-workflow.json     # n8n AI Agent workflow template
+│   │   └── test-cases.example.json
 │   ├── wrangler.toml
 │   └── README.md
 │
