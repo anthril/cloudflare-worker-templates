@@ -1,0 +1,61 @@
+{
+  "name": "email-notification-worker",
+  "version": "1.0.0",
+  "description": "Queue-driven email notification worker. HTTP producer + queue consumer sending via nodemailer SMTP with DKIM signing.",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "types": "wrangler types",
+    "setup:queues": "npx wrangler queues create email-notifications && npx wrangler queues create email-notifications-dlq",
+    "setup:kv": "npx wrangler kv namespace create IDEMPOTENCY",
+    "setup:d1": "npx wrangler d1 create email_deliveries",
+    "setup:d1:migrate": "npx wrangler d1 migrations apply email_deliveries --remote",
+    "setup:secrets-store": "npx wrangler secrets-store store create email-worker-secrets",
+    "setup:dns": "npx tsx scripts/setup-dns.ts",
+    "generate:dkim": "npx tsx scripts/generate-dkim.ts",
+    "test:send": "npx tsx scripts/send-test.ts"
+  },
+  "keywords": ["cloudflare", "workers", "email", "nodemailer", "smtp", "queue", "notifications", "dkim"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "@types/nodemailer": "^6.4.17",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.0.0"
+  },
+  "dependencies": {
+    "nodemailer": "^8.0.6"
+  },
+  "cloudflare": {
+    "bindings": {
+      "API_BEARER_TOKEN": {
+        "description": "Bearer token for POST /send requests. Generate with: openssl rand -hex 32"
+      },
+      "SMTP_HOST": {
+        "description": "SMTP server hostname (e.g. email-smtp.us-east-1.amazonaws.com, smtp.resend.com, smtp.sendgrid.net)."
+      },
+      "SMTP_PORT": {
+        "description": "SMTP port. 587 for STARTTLS (most providers) or 465 for implicit TLS."
+      },
+      "SMTP_USER": {
+        "description": "SMTP username. Provider-specific (SES IAM SMTP user, 'apikey' for SendGrid, 'resend' for Resend)."
+      },
+      "SMTP_PASS": {
+        "description": "SMTP password / API key. Obtain from your provider's dashboard."
+      },
+      "DKIM_PRIVATE_KEY": {
+        "description": "PEM-encoded RSA private key used by nodemailer to sign outbound messages. Generate with: npm run generate:dkim"
+      },
+      "DKIM_SELECTOR": {
+        "description": "DKIM selector that appears in the DNS record name (e.g. 's1'). Must match <selector>._domainkey.<DKIM_DOMAIN> TXT record."
+      },
+      "DKIM_DOMAIN": {
+        "description": "Sending domain (e.g. mail.example.com). Used as the d= tag in the DKIM signature."
+      }
+    }
+  }
+}

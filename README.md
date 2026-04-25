@@ -9,6 +9,7 @@ Production-ready Cloudflare Worker templates for common integrations. Each templ
 | [Twilio Voice Agent](./twilio-voice-agent/) | AI-powered voice agent using Twilio Media Streams + OpenAI Realtime API | Twilio, OpenAI, HubSpot CRM, Cloudflare Durable Objects, Vectorize |
 | [WooCommerce Product Embedding](./woocommerce-product-embedding/) | Sync WooCommerce products to Cloudflare Vectorize for semantic search | WooCommerce, OpenAI Embeddings, Cloudflare Vectorize, KV |
 | [Product Search API](./product-search-api/) | Gateway Worker for semantic product search over Vectorize + KV | OpenAI Embeddings, Cloudflare Vectorize, KV |
+| [Email Notification Worker](./email-notification-worker/) | Queue-driven email sender with nodemailer SMTP + DKIM signing | nodemailer, Cloudflare Queues, D1, KV, Analytics Engine, DNS API |
 
 ## Architecture
 
@@ -118,6 +119,19 @@ cloudflare-worker-templates/
 │   ├── examples/
 │   │   ├── n8n-workflow.json     # n8n AI Agent workflow template
 │   │   └── test-cases.example.json
+│   ├── wrangler.toml
+│   └── README.md
+│
+├── email-notification-worker/     # Queue-driven SMTP sender (nodemailer + DKIM)
+│   ├── src/
+│   │   ├── index.ts              # fetch + queue handlers
+│   │   ├── email-service.ts      # nodemailer transport
+│   │   ├── template-engine.ts    # HTML + text template renderer
+│   │   ├── templates/            # welcome, password-reset, order-confirmation
+│   │   ├── delivery-log.ts       # D1 helpers
+│   │   └── idempotency.ts        # KV helpers
+│   ├── scripts/                  # generate-dkim, setup-dns, send-test
+│   ├── migrations/               # D1 schema
 │   ├── wrangler.toml
 │   └── README.md
 │

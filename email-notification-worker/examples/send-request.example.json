@@ -1,0 +1,10 @@
+{
+  "recipient": "test@example.com",
+  "template": "welcome",
+  "templateData": {
+    "name": "Ada",
+    "productName": "Lovelace Labs",
+    "ctaUrl": "https://app.example.com/onboarding"
+  },
+  "idempotency_key": "signup-user-123"
+}

@@ -1,0 +1,18 @@
+{
+  "message_id": "4f8f6e1a-2b33-4f7c-9b48-1d7a2cf6a012",
+  "recipient": "test@example.com",
+  "template": "order-confirmation",
+  "templateData": {
+    "orderNumber": "A-1042",
+    "customerName": "Ada Lovelace",
+    "items": [
+      { "name": "Analytical Engine kit", "qty": 1, "price": "499.00" },
+      { "name": "Punch card bundle",     "qty": 2, "price": "18.00"  }
+    ],
+    "total": "535.00",
+    "currency": "USD",
+    "trackingUrl": "https://tracking.example.com/A-1042"
+  },
+  "idempotency_key": "order-A-1042-confirmation",
+  "enqueued_at": "2026-04-25T10:22:00.000Z"
+}

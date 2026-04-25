@@ -1,0 +1,85 @@
+name = "email-notification-worker"
+main = "src/index.ts"
+compatibility_date = "2025-01-06"
+compatibility_flags = ["nodejs_compat"]
+
+# Set your Cloudflare account ID (or use CLOUDFLARE_ACCOUNT_ID env var)
+# account_id = "your-account-id"
+
+workers_dev = true
+
+# ─── Queue producer (HTTP POST /send enqueues messages) ───
+# Create with: npm run setup:queues
+[[queues.producers]]
+binding = "EMAIL_QUEUE"
+queue = "email-notifications"
+
+# ─── Queue consumer (sends via SMTP) ───
+[[queues.consumers]]
+queue = "email-notifications"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 5
+dead_letter_queue = "email-notifications-dlq"
+
+# ─── KV namespace: idempotency keys (short TTL, ~24h) ───
+# Create with: npm run setup:kv — paste the returned id below
+[[kv_namespaces]]
+binding = "IDEMPOTENCY"
+# id = "paste-kv-namespace-id-here"
+
+# ─── D1 database: delivery log ───
+# Create with: npm run setup:d1 — paste the returned database_id below
+# Apply schema with: npm run setup:d1:migrate
+[[d1_databases]]
+binding = "DELIVERY_LOG"
+database_name = "email_deliveries"
+# database_id = "paste-d1-database-id-here"
+migrations_dir = "migrations"
+
+# ─── Analytics Engine: sent/failed/bounced event stream ───
+# No manual creation needed — auto-provisioned on first write
+[[analytics_engine_datasets]]
+binding = "EMAIL_METRICS"
+dataset = "email_notification_events"
+
+# ─── Secrets Store: optional, for rotating SMTP creds without redeploy ───
+# Create with: npm run setup:secrets-store — paste the returned store_id below
+# To use, uncomment and populate the smtp-credentials JSON secret (see README).
+# [[secrets_store_secrets]]
+# binding = "SMTP_SECRETS"
+# store_id = "paste-secrets-store-id-here"
+# secret_name = "smtp-credentials"
+
+# ─── Observability ───
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+# ─── Environment variables (non-secret) ───
+[vars]
+ENVIRONMENT = "production"
+FROM_EMAIL = "noreply@mail.example.com"
+FROM_NAME = "Example Notifications"
+REPLY_TO_EMAIL = "support@example.com"
+IDEMPOTENCY_TTL_SECONDS = "86400"
+
+# ─── Required secrets — deploy will fail if these are not set ───
+# Set via: npx wrangler secret put SECRET_NAME
+[secrets]
+required = [
+  "API_BEARER_TOKEN",
+  "SMTP_HOST",
+  "SMTP_PORT",
+  "SMTP_USER",
+  "SMTP_PASS",
+  "DKIM_PRIVATE_KEY",
+  "DKIM_SELECTOR",
+  "DKIM_DOMAIN"
+]

@@ -1,0 +1,23 @@
+# Bearer token required for POST /send
+# Generate with: openssl rand -hex 32
+API_BEARER_TOKEN=your-bearer-token-here
+
+# SMTP credentials — provider-agnostic
+# Examples:
+#   Amazon SES: email-smtp.us-east-1.amazonaws.com / 587 / <IAM SMTP user> / <IAM SMTP password>
+#   Resend:     smtp.resend.com / 465 / resend / re_XXXXXXXX
+#   SendGrid:   smtp.sendgrid.net / 587 / apikey / SG.XXXXXXXX
+#   Mailgun:    smtp.mailgun.org / 587 / postmaster@mg.example.com / <smtp password>
+#   Postmark:   smtp.postmarkapp.com / 587 / <server token> / <server token>
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=your-smtp-user
+SMTP_PASS=your-smtp-password
+
+# DKIM signing — nodemailer signs outbound messages before handing off to SMTP.
+# The public half of this keypair must be published at:
+#   <DKIM_SELECTOR>._domainkey.<DKIM_DOMAIN>  TXT  "v=DKIM1; k=rsa; p=<public-key>"
+# Generate both halves with: npm run generate:dkim
+DKIM_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...multi-line PEM...\n-----END PRIVATE KEY-----"
+DKIM_SELECTOR=s1
+DKIM_DOMAIN=mail.example.com
